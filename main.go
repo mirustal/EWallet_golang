@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ewallet/app/routes"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -10,6 +12,8 @@ func main() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.JSON(&fiber.Map{"data": "Hello from Fiber & mongoDB"})
 	})
+
+	routes.Init(app)
 
 	app.Listen(":8080")
 
