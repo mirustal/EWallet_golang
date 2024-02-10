@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"ewallet/app/models"
 	"ewallet/app/queries"
 
@@ -12,9 +13,8 @@ import (
 
 type db struct {
 	wallets *mongo.Collection
-	states *mongo.Collection
+	states  *mongo.Collection
 }
-
 
 func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
 	// Создаем новый кошелек с начальным балансом
@@ -40,7 +40,7 @@ func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
 	return wallet, nil
 }
 
-func (d *db) FindWalletById(ctx context.Context, walletId string) (models.Wallet, error) {
+func (d *db) FindWalletByID(ctx context.Context, walletId string) (models.Wallet, error) {
 	wallet := models.Wallet{}
 
 	objIdWallet, _ := primitive.ObjectIDFromHex(walletId)
@@ -55,45 +55,45 @@ func (d *db) FindWalletById(ctx context.Context, walletId string) (models.Wallet
 	return wallet, nil
 }
 
-func (d *db) SendWallet(ctx context.Context, walletId string, toWallet models.ToWallet) (string, error) {
-    wallet, err := d.FindWalletById(ctx, walletId)
-    if err != nil {
-        return "", err
-    }
+func (d *db) SendWallet(ctx context.Context, walletID string, toWallet models.ToWallet) error {
+	wallet, err := d.FindWalletByID(ctx, walletID)
+	if err != nil {
+		return err
+	}
 
-    recipientWallet, err := d.FindWalletById(ctx, toWallet.ID)
-    if err != nil {
-        return "", err
-    }
+	recipientWallet, err := d.FindWalletByID(ctx, toWallet.ID)
+	if err != nil {
+		return err
+	}
 
-    wallet.Balance -= toWallet.Amount
-    if wallet.Balance < 0 {
-        return "ladno", nil
-    }
+	if wallet.Balance < toWallet.Amount {
+		return errors.New("insufficient funds")
+	}
 
-    recipientWallet.Balance += toWallet.Amount
+	wallet.Balance -= toWallet.Amount
+	recipientWallet.Balance += toWallet.Amount
 
-    if err := d.UpdateWallet(ctx, recipientWallet); err != nil {
-        return "", err
-    }
-    if err := d.UpdateWallet(ctx, wallet); err != nil {
-        return "", err
-    }
+	if err := d.UpdateWallet(ctx, recipientWallet); err != nil {
+		return err
+	}
+	if err := d.UpdateWallet(ctx, wallet); err != nil {
+		return err
+	}
 
-    return "hello", nil
+	return nil
 }
 
 func (d *db) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
-    objectId, _ := primitive.ObjectIDFromHex(wallet.ID)
-    filter := bson.M{"_id": objectId}
-    update := bson.M{"balance": wallet.Balance}
+	objectId, _ := primitive.ObjectIDFromHex(wallet.ID)
+	filter := bson.M{"_id": objectId}
+	update := bson.M{"balance": wallet.Balance}
 
-    _, err := d.wallets.ReplaceOne(ctx, filter, update)
-    if err != nil {
-        return err
-    }
+	_, err := d.wallets.ReplaceOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 func NewStorage(database *mongo.Database) queries.Storage {

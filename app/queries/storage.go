@@ -7,8 +7,7 @@ import (
 
 type Storage interface {
 	CreateWallet(ctx context.Context) (models.Wallet, error)
-	FindWalletById(ctx context.Context, walletId string) (models.Wallet, error)
-	SendWallet(ctx context.Context, walletId string, toWallet models.ToWallet) (string, error)
+	FindWalletByID(ctx context.Context, walletId string) (models.Wallet, error)
+	SendWallet(ctx context.Context, walletId string, toWallet models.ToWallet) error
 	UpdateWallet(ctx context.Context, wallet models.Wallet) error
 }
-

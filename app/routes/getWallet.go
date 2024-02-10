@@ -6,13 +6,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-
 func getWallet(c *fiber.Ctx) error {
 	println("Handle get wallet")
-	
-	walletID := c.Params("walletId")
-	walletData, err := storage.FindWalletById(context.Background(), walletID)
 
+	walletID := c.Params("walletId")
+	walletData, err := storage.FindWalletByID(context.Background(), walletID)
 
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{
@@ -22,8 +20,7 @@ func getWallet(c *fiber.Ctx) error {
 
 	return c.Status(200).JSON(fiber.Map{
 		"description": "ОК",
-		"wallet": walletData,
-		
+		"wallet":      walletData,
 	})
 
 }
