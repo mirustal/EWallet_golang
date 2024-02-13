@@ -20,7 +20,6 @@ func createWallet(c *fiber.Ctx) error {
 
 	return c.Status(200).JSON(fiber.Map{
 		"description": "Кошелек создан",
-		
 		"content": fiber.Map{
 			"id":     walletData.ID,
 			"amount": walletData.Balance,

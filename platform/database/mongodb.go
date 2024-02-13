@@ -57,18 +57,18 @@ func (d *db) FindWalletByID(ctx context.Context, walletId string) (models.Wallet
 	return wallet, nil
 }
 
-func (d *db) SendWallet(ctx context.Context, walletID string, toWallet models.ToWallet) error {
+func (d *db) SendWallet(ctx context.Context, walletID string, toID string, amount float32) error {
 	wallet, err := d.FindWalletByID(ctx, walletID)
 	if err != nil {
 		return err
 	}
 
-	recipientWallet, err := d.FindWalletByID(ctx, toWallet.ToID)
+	recipientWallet, err := d.FindWalletByID(ctx, toID)
 	if err != nil {
 		return err
 	}
 	
-	if wallet.Balance <= toWallet.Amount {
+	if wallet.Balance <= amount {
 		return errors.New("insufficient funds")
 	}
 
@@ -78,22 +78,22 @@ func (d *db) SendWallet(ctx context.Context, walletID string, toWallet models.To
 
 	newHistoryWallet := models.HistoryWallet{
 		FromWalletId: walletID,
-		ToWalletId: toWallet.ToID,
-		Amount: toWallet.Amount,
+		ToWalletId: toID,
+		Amount: amount,
 		TimeTransaction: currentTime,
 	}
 
 	wallet.HistoryTransaction = append(wallet.HistoryTransaction, newHistoryWallet)
 
-
-	wallet.Balance -= toWallet.Amount
-	recipientWallet.Balance += toWallet.Amount
+	
+	wallet.Balance -= amount
+	recipientWallet.Balance += amount
 
 
 	recipientHistoryWallet := models.HistoryWallet{
 		FromWalletId: walletID,
-		ToWalletId: toWallet.ToID,
-		Amount: toWallet.Amount,
+		ToWalletId: toID,
+		Amount: amount,
 		TimeTransaction: currentTime,
 	}
 	recipientWallet.HistoryTransaction = append(recipientWallet.HistoryTransaction, recipientHistoryWallet)

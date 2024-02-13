@@ -22,7 +22,7 @@ func getWallet(c *fiber.Ctx) error {
 		"description": "OK",
 		"content": fiber.Map{ 
 			"id":     walletData.ID,
-			"amount": walletData.Balance,
+			"balance": walletData.Balance,
 		},
 	})
 
