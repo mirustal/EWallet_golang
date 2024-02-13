@@ -5,6 +5,7 @@ import (
 	"errors"
 	"ewallet/app/models"
 	"ewallet/app/queries"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,9 +18,10 @@ type db struct {
 }
 
 func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
-	// Создаем новый кошелек с начальным балансом
+	// Создаем новый кошелек
 	wallet := models.Wallet{
 		Balance: 100,
+		HistoryTransaction: []models.HistoryWallet{},
 	}
 
 	// Вставляем данные кошелька в коллекцию
@@ -28,13 +30,13 @@ func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
 		return models.Wallet{}, err
 	}
 
-	// Получаем вставленный идентификатор
+	// Получаем  идентификатор
 	oid, ok := resultInsert.InsertedID.(primitive.ObjectID)
 	if !ok {
 		return models.Wallet{}, err
 	}
 
-	// Присваиваем идентификатор кошелька
+
 	wallet.ID = oid.Hex()
 
 	return wallet, nil
@@ -45,7 +47,7 @@ func (d *db) FindWalletByID(ctx context.Context, walletId string) (models.Wallet
 
 	objIdWallet, _ := primitive.ObjectIDFromHex(walletId)
 	filter := bson.D{{"_id", objIdWallet}}
-
+	// Ищем нужный объект в коллекции
 	err := d.wallets.FindOne(ctx, filter).Decode(&wallet)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -61,17 +63,41 @@ func (d *db) SendWallet(ctx context.Context, walletID string, toWallet models.To
 		return err
 	}
 
-	recipientWallet, err := d.FindWalletByID(ctx, toWallet.ID)
+	recipientWallet, err := d.FindWalletByID(ctx, toWallet.ToID)
 	if err != nil {
 		return err
 	}
-
-	if wallet.Balance < toWallet.Amount {
+	
+	if wallet.Balance <= toWallet.Amount {
 		return errors.New("insufficient funds")
 	}
 
+	
+	currentTime := time.Now().Format(time.RFC3339) 
+
+
+	newHistoryWallet := models.HistoryWallet{
+		FromWalletId: walletID,
+		ToWalletId: toWallet.ToID,
+		Amount: toWallet.Amount,
+		TimeTransaction: currentTime,
+	}
+
+	wallet.HistoryTransaction = append(wallet.HistoryTransaction, newHistoryWallet)
+
+
 	wallet.Balance -= toWallet.Amount
 	recipientWallet.Balance += toWallet.Amount
+
+
+	recipientHistoryWallet := models.HistoryWallet{
+		FromWalletId: walletID,
+		ToWalletId: toWallet.ToID,
+		Amount: toWallet.Amount,
+		TimeTransaction: currentTime,
+	}
+	recipientWallet.HistoryTransaction = append(recipientWallet.HistoryTransaction, recipientHistoryWallet)
+
 
 	if err := d.UpdateWallet(ctx, recipientWallet); err != nil {
 		return err
@@ -85,8 +111,12 @@ func (d *db) SendWallet(ctx context.Context, walletID string, toWallet models.To
 
 func (d *db) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
 	objectId, _ := primitive.ObjectIDFromHex(wallet.ID)
+
 	filter := bson.M{"_id": objectId}
-	update := bson.M{"balance": wallet.Balance}
+	update := bson.M{
+			"balance":            wallet.Balance,
+			"historyTransaction": wallet.HistoryTransaction,
+	}
 
 	_, err := d.wallets.ReplaceOne(ctx, filter, update)
 	if err != nil {
@@ -94,6 +124,14 @@ func (d *db) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
 	}
 
 	return nil
+}
+
+func (d *db) GetHistoryWallet(ctx context.Context, walletId string) ([]models.HistoryWallet, error){
+	wallet, err := d.FindWalletByID(ctx, walletId)
+	if err != nil {
+			return nil, err
+	}
+	return wallet.HistoryTransaction, nil
 }
 
 func NewStorage(database *mongo.Database) queries.Storage {

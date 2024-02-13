@@ -24,5 +24,5 @@ func Init(app *fiber.App) {
 	walletGroup.Post("/", createWallet)
 	walletGroup.Get("/:walletId", getWallet)
 	walletGroup.Post("/:walletId/send", sendWallet)
-
+	walletGroup.Get("/:walletId/history", getHistory)
 }
