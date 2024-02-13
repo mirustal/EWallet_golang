@@ -20,7 +20,7 @@ type db struct {
 func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
 	// Создаем новый кошелек
 	wallet := models.Wallet{
-		Balance: 100,
+		Balance:            100,
 		HistoryTransaction: []models.HistoryWallet{},
 	}
 
@@ -35,7 +35,6 @@ func (d *db) CreateWallet(ctx context.Context) (models.Wallet, error) {
 	if !ok {
 		return models.Wallet{}, err
 	}
-
 
 	wallet.ID = oid.Hex()
 
@@ -67,37 +66,32 @@ func (d *db) SendWallet(ctx context.Context, walletID string, toID string, amoun
 	if err != nil {
 		return err
 	}
-	
-	if wallet.Balance <= amount {
+
+	if wallet.Balance < amount {
 		return errors.New("insufficient funds")
 	}
 
-	
-	currentTime := time.Now().Format(time.RFC3339) 
-
+	currentTime := time.Now().Format(time.RFC3339)
 
 	newHistoryWallet := models.HistoryWallet{
-		FromWalletId: walletID,
-		ToWalletId: toID,
-		Amount: amount,
+		FromWalletId:    walletID,
+		ToWalletId:      toID,
+		Amount:          amount,
 		TimeTransaction: currentTime,
 	}
 
 	wallet.HistoryTransaction = append(wallet.HistoryTransaction, newHistoryWallet)
 
-	
 	wallet.Balance -= amount
 	recipientWallet.Balance += amount
 
-
 	recipientHistoryWallet := models.HistoryWallet{
-		FromWalletId: walletID,
-		ToWalletId: toID,
-		Amount: amount,
+		FromWalletId:    walletID,
+		ToWalletId:      toID,
+		Amount:          amount,
 		TimeTransaction: currentTime,
 	}
 	recipientWallet.HistoryTransaction = append(recipientWallet.HistoryTransaction, recipientHistoryWallet)
-
 
 	if err := d.UpdateWallet(ctx, recipientWallet); err != nil {
 		return err
@@ -114,8 +108,8 @@ func (d *db) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
 
 	filter := bson.M{"_id": objectId}
 	update := bson.M{
-			"balance":            wallet.Balance,
-			"historyTransaction": wallet.HistoryTransaction,
+		"balance":            wallet.Balance,
+		"historyTransaction": wallet.HistoryTransaction,
 	}
 
 	_, err := d.wallets.ReplaceOne(ctx, filter, update)
@@ -126,10 +120,10 @@ func (d *db) UpdateWallet(ctx context.Context, wallet models.Wallet) error {
 	return nil
 }
 
-func (d *db) GetHistoryWallet(ctx context.Context, walletId string) ([]models.HistoryWallet, error){
+func (d *db) GetHistoryWallet(ctx context.Context, walletId string) ([]models.HistoryWallet, error) {
 	wallet, err := d.FindWalletByID(ctx, walletId)
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
 	return wallet.HistoryTransaction, nil
 }
